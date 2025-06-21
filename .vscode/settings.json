@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "lambdas.h": "c",
+        "functional": "c",
+        "utility": "c",
+        "stdio.h": "c"
+    }
+}
