@@ -31,6 +31,22 @@ Expression *make_application(Expression *function, Expression *argument) {
     return expression;
 }
 
+Expression *clone_expression(Expression *expression) {
+    if (!expression) return NULL;
+
+    switch (expression->type) {
+        case VARIABLE:
+            return make_variable(expression->index);
+        case ABSTRACTION:
+            return make_abstraction(clone_expression(expression->body));
+        case APPLICATION:
+            return make_application(
+                clone_expression(expression->app.function),
+                clone_expression(expression->app.argument)
+            );
+    }
+}
+
 void free_expression(Expression *expression) {
     if (!expression) return;
     switch (expression->type) {
@@ -47,13 +63,23 @@ void free_expression(Expression *expression) {
     free(expression);
 }
 
+void print_all(Expression *expression) {
+    printf("Lambda expression : ");
+    print_expression(expression);
+    printf("has tree :\n");
+    print_tree(expression, 0);
+}
+
 void print_expression(Expression *expression) {
+    if (!expression) return;
+
     print_expression_r(expression, 1, 0);
     printf("\n");
 }
 
 void print_expression_r(Expression *expression, int top, int lambda) {
     if (!expression) return;
+
     switch (expression->type) {
         case VARIABLE:
             if (expression->index >= 0)printf("%d", expression->index);
@@ -75,6 +101,7 @@ void print_expression_r(Expression *expression, int top, int lambda) {
 
 void print_tree(Expression *expression, int depth) {
     if (!expression) return;
+
     switch (expression->type) {
         case VARIABLE:
             print_depth(depth);
@@ -147,4 +174,82 @@ int is_expression_valid(Expression *expression) {
         case APPLICATION:
             return is_expression_valid(expression->app.function) && is_expression_valid(expression->app.argument);
     }
+}
+
+void substitute_abstraction(Expression *expression, int depth, Expression *replacement) {
+    if (!expression) return;
+
+    if (expression->type != ABSTRACTION) return;
+
+    switch (expression->body->type) {
+        case VARIABLE:
+            if (expression->body->index == depth) {
+                free_expression(expression->body);
+                expression->body = clone_expression(replacement);
+            }
+            break;
+        case ABSTRACTION:
+            substitute_abstraction(expression->body, depth + 1, replacement);
+            break;
+        case APPLICATION:
+            substitute_application(expression->body, depth, replacement);
+            break;
+    }
+}
+
+void substitute_application(Expression *expression, int depth, Expression *replacement) {
+    if (!expression) return;
+
+    if (expression->type != APPLICATION) return;
+
+    switch (expression->app.function->type) {
+        case VARIABLE:
+            if (expression->app.function->index == depth) {
+                free_expression(expression->app.function);
+                expression->app.function = clone_expression(replacement);
+            }
+            break;
+        case ABSTRACTION:
+            substitute_abstraction(expression->app.function, depth + 1, replacement);
+            break;
+        case APPLICATION:
+            substitute_application(expression->app.function, depth, replacement);
+            break;
+    }
+
+    switch (expression->app.argument->type) {
+        case VARIABLE:
+            if (expression->app.argument->index == depth) {
+                free_expression(expression->app.argument);
+                expression->app.argument = clone_expression(replacement);
+            }
+            break;
+        case ABSTRACTION:
+            substitute_abstraction(expression->app.argument, depth + 1, replacement);
+            break;
+        case APPLICATION:
+            substitute_application(expression->app.argument, depth, replacement);
+            break;
+    }
+}
+
+int can_beta_reduce(Expression *expression) {
+    if (!expression) return 0;
+    if (expression->type != APPLICATION) return 0;
+
+    return expression->app.function->type == ABSTRACTION;
+}
+
+Expression *beta_reduce(Expression *expression) {
+    if (!expression) return NULL;
+    if (expression->type != APPLICATION) return NULL;
+    if (!can_beta_reduce(expression)) return NULL;
+
+    substitute_abstraction(expression->app.function, 0, expression->app.argument);
+    Expression *result = expression->app.function->body;
+
+    expression->app.function->body = NULL;
+    free_expression(expression);
+
+    return result;
 }
