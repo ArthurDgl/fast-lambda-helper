@@ -64,9 +64,9 @@ void free_expression(Expression *expression) {
 }
 
 void print_all(Expression *expression) {
-    printf("Lambda expression : ");
-    print_expression(expression);
-    printf("has tree :\n");
+    printf("Lambda expression < ");
+    print_expression_r(expression, 1, 0);
+    printf(" > has tree :\n");
     print_tree(expression, 0);
 }
 
@@ -94,7 +94,9 @@ void print_expression_r(Expression *expression, int top, int lambda) {
         case APPLICATION:
             print_expression_r(expression->app.function, 0, 0);
             printf(" ");
+            if (expression->app.argument->type == APPLICATION) printf("(");
             print_expression_r(expression->app.argument, 0, 0);
+            if (expression->app.argument->type == APPLICATION) printf(")");
             break;
     }
 }
@@ -233,7 +235,7 @@ void substitute_application(Expression *expression, int depth, Expression *repla
     }
 }
 
-int can_beta_reduce(Expression *expression) {
+int is_redex(Expression *expression) {
     if (!expression) return 0;
     if (expression->type != APPLICATION) return 0;
 
@@ -243,7 +245,7 @@ int can_beta_reduce(Expression *expression) {
 Expression *beta_reduce(Expression *expression) {
     if (!expression) return NULL;
     if (expression->type != APPLICATION) return NULL;
-    if (!can_beta_reduce(expression)) return NULL;
+    if (!is_redex(expression)) return NULL;
 
     substitute_abstraction(expression->app.function, 0, expression->app.argument);
     Expression *result = expression->app.function->body;
@@ -252,4 +254,60 @@ Expression *beta_reduce(Expression *expression) {
     free_expression(expression);
 
     return result;
+}
+
+Expression *reduce_normal_order(Expression *expression) {
+    if (!expression) return 0;
+
+    if (is_redex(expression)) return beta_reduce(expression);
+
+    if (!reduce_normal_order_r(expression)) return NULL;
+
+    return expression;
+}
+
+int reduce_normal_order_r(Expression *expression) {
+    if (!expression) return 0;
+
+    switch (expression->type) {
+        case VARIABLE:
+            return 0;
+        case ABSTRACTION:
+            if (is_redex(expression->body)) {
+                expression->body = beta_reduce(expression->body);
+                return 1;
+            }
+            return reduce_normal_order_r(expression->body);
+        case APPLICATION:
+            if (is_redex(expression->app.function)) {
+                expression->app.function = beta_reduce(expression->app.function);
+                return 1;
+            }
+            if (reduce_normal_order_r(expression->app.function)) {
+                return 1;
+            }
+            if (is_redex(expression->app.argument)) {
+                expression->app.argument = beta_reduce(expression->app.argument);
+                return 1;
+            }
+            return reduce_normal_order_r(expression->app.argument);
+    }
+}
+
+Expression *search_beta_normal_form(Expression *expression, int show) {
+    int steps = 0;
+    Expression *result = expression;
+    if (show) printf("Searching for beta normal form...\n");
+    while (result) {
+        expression = result;
+        if (show) print_expression(expression);
+        result = reduce_normal_order(result);
+        steps++;
+        if (steps >= 10000) {
+            if (show) printf("STOPPED AFTER %d STEPS\n", steps);
+            return NULL;
+        }
+    }
+    if (show) printf("Found beta normal form %d steps\n", steps);
+    return expression;
 }

@@ -47,6 +47,13 @@ TokenArray *tokenize(char *str) {
         }
     }
 
+    if (currentLength > 0) {
+        container[tokens].type = NUMVAR;
+        sscanf(str + len - 1 - currentLength, "%d", &container[tokens].index);
+        tokens++;
+        currentLength = 0;
+    }
+
     TokenArray *result = (TokenArray *)malloc(sizeof(TokenArray));
     result->length = tokens;
     result->tokens = (Token *)malloc(tokens * sizeof(Token));

@@ -51,6 +51,12 @@ void substitute_abstraction(Expression *, int, Expression *);
 
 void substitute_application(Expression *, int, Expression *);
 
-int can_beta_reduce(Expression *);
+int is_redex(Expression *);
 
 Expression *beta_reduce(Expression *);
+
+Expression *reduce_normal_order(Expression *);
+
+int reduce_normal_order_r(Expression *);
+
+Expression *search_beta_normal_form(Expression *, int);
