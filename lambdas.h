@@ -47,6 +47,10 @@ Expression *parse_expression(char *);
 
 int is_expression_valid(Expression *);
 
+int has_left_side_abstraction(Expression *);
+
+int has_right_side_abstraction(Expression *);
+
 void substitute_abstraction(Expression *, int, Expression *);
 
 void substitute_application(Expression *, int, Expression *);

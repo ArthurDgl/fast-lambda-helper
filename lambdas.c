@@ -178,6 +178,30 @@ int is_expression_valid(Expression *expression) {
     }
 }
 
+int has_left_side_abstraction(Expression *expression) {
+    if (!expression) return 0;
+    switch (expression->type) {
+        case VARIABLE:
+            return 0;
+        case ABSTRACTION:
+            return 1;
+        case APPLICATION:
+            return has_left_side_abstraction(expression->app.function);
+    }
+}
+
+int has_right_side_abstraction(Expression *expression) {
+    if (!expression) return 0;
+    switch (expression->type) {
+        case VARIABLE:
+            return 0;
+        case ABSTRACTION:
+            return 1;
+        case APPLICATION:
+            return has_right_side_abstraction(expression->app.argument);
+    }
+}
+
 void substitute_abstraction(Expression *expression, int depth, Expression *replacement) {
     if (!expression) return;
 
@@ -308,6 +332,6 @@ Expression *search_beta_normal_form(Expression *expression, int show) {
             return NULL;
         }
     }
-    if (show) printf("Found beta normal form %d steps\n", steps);
+    if (show) printf("Found beta normal form %d in steps\n", steps);
     return expression;
 }
